@@ -1,0 +1,70 @@
+name: "DebtDraft"
+description: "Scores pull requests on complexity, coverage, duplication and dependency risk. Also flags hardcoded secrets."
+author: "DebtDraft"
+
+inputs:
+  github-token:
+    description: "GitHub token used to authenticate API calls (e.g. posting the PR comment)."
+    required: false
+    default: ${{ github.token }}
+  complexity-threshold:
+    description: "Functions with cyclomatic complexity above this value are flagged in the report."
+    required: false
+    default: "10"
+  exclude:
+    description: "Newline-separated glob patterns for files to exclude from analysis, in addition to the built-in defaults (node_modules, dist, build, out, .next, coverage, vendor, *.min.js, *.d.ts, __fixtures__, fixtures, __mocks__, __tests__, *.test.*, *.spec.*). Applies to complexity, coverage, duplication, outdated-dependency and vulnerable-dependency (package.json manifest) analysis, and secrets scanning alike (secrets scanning has its own, smaller default list that keeps tests and fixtures in scope, since real credentials leak into them)."
+    required: false
+    default: ""
+  coverage-files:
+    description: "Newline-separated paths to existing coverage reports (LCOV .info, or Istanbul coverage-final.json), relative to the workspace. DebtDraft reads these; it never runs your tests. When empty, auto-detects coverage/lcov.info, then coverage/coverage-final.json, at the workspace root."
+    required: false
+    default: ""
+  fail-on-secrets:
+    description: "Fail the run when this pull request introduces a high-confidence secret (a credential matching a known provider's format, e.g. an AWS access key, a GitHub token, a private key) on one of its own changed lines. Never fails for a secret already in the repository (this pull request cannot fix it), for a medium-confidence heuristic match on its own, or when the scan did not complete. The failure happens after the pull-request comment and job summary are published, so they still show what to fix. Set to false to report without failing. To mark a single false positive, add a comment containing secretlint-disable-next-line on the line above it."
+    required: false
+    default: "true"
+  api-key:
+    description: "Bearer token identifying your DebtDraft team. Generate one from your team's dashboard settings, then store it as a repository secret. Required: this run checks it (and that this repository is connected and active on your plan) before any analysis starts, and fails the run if it is missing, invalid, revoked, or the repository is not connected or is locked by your plan's repository limit."
+    required: true
+  api-url:
+    description: "Full URL of your DebtDraft scans API endpoint. Defaults to the hosted DebtDraft dashboard; override only for local development."
+    required: false
+    default: "https://debtdraft.dev/api/scans"
+
+outputs:
+  health-score:
+    description: "0-100 overall health score: a weighted average of complexity-score, coverage-score, duplication-score, outdated-deps-score, and vulnerable-deps-score (weights, out of 30 total: vulnerable-deps 10, coverage 7.5, complexity 5, duplication 5, outdated-deps 2.5 -- vulnerability risk weighs most, since it's the only signal that can turn a merged PR into a real incident). A signal that's empty (see its own output's description) is excluded from both the weighted sum and the weight total, so a repo missing one signal (e.g. no coverage report configured) is scored fairly on the rest rather than punished or flattered. Empty only when every signal is empty. Capped at 59 (never raised) when a known-malicious package (see vulnerable-deps-score) was found anywhere in the dependency tree, regardless of the weighted result."
+  health-grade:
+    description: "health-score mapped to a US academic letter grade (A+ down to F, boundaries at 97/93/90/87/83/80/77/73/70/67/63/60). Empty exactly when health-score is empty."
+  complexity-score:
+    description: "0-100 cyclomatic complexity sub-score for the repository at the checked-out commit (empty if no JS/TS source files were found)."
+  coverage-score:
+    description: "0-100 overall line coverage sub-score, computed from the coverage-files report(s) (empty if no usable report was found)."
+  patch-coverage:
+    description: "0-100 line coverage of this pull request's changed lines only (empty on non-PR events, or when no changed lines are covered by any report)."
+  duplication-score:
+    description: "0-100 code duplication sub-score (100 minus the duplicated-lines percentage; higher is better). A duplicate is at least 100 identical normalized tokens spanning at least 10 lines (SonarQube's own JS/TS rule). Empty if no analyzable JS/TS lines were found, or if the repository exceeds the engine's internal token budget."
+  patch-duplication-score:
+    description: "0-100 duplication sub-score of just this pull request's changed lines (empty on non-PR events, or when there are no changed lines to measure)."
+  outdated-deps-score:
+    description: "0-100 outdated-dependency sub-score (100 minus the percentage of analyzed dependencies that are a breaking release behind latest, or deprecated; higher is better). Each dependency's actually-installed version comes from a lockfile when one covers it, otherwise from the version a fresh install would resolve today. A dependency under a scope mapped to a private registry (via .npmrc or .yarnrc.yml) or resolved from one is never looked up; every other public package name is looked up on deps.dev (an Open Source Insights API operated by Google) to get its latest version and publish dates. Empty if no analyzable dependency was found, or if the repository's unique-package count exceeds the engine's internal budget."
+  patch-outdated-deps-score:
+    description: "0-100 outdated-dependency sub-score of just this pull request's changed dependency declarations (empty on non-PR events, or when the PR didn't change any package.json dependency line). A lockfile-only version bump with no corresponding package.json change isn't counted as a changed declaration."
+  vulnerable-deps-score:
+    description: "0-100 known-vulnerability sub-score, driven by the single worst severity found anywhere in the repository's full installed dependency tree (direct and transitive alike), not an average or percentage: no vulnerabilities 100, low 75, moderate 50, high (or an unrated advisory) 25, critical or known-malicious package 0. Known vulnerabilities and malicious-package records come from OSV.dev (an Open Source Vulnerabilities database operated by Google); every audited package's name and installed version is sent to it, except one under a scope mapped to a private registry (via .npmrc or .yarnrc.yml) or resolved from one, which is never looked up. Empty if no lockfile was found anywhere in the repository, or if the repository's unique-package count exceeds the engine's internal budget, or if the OSV.dev query itself did not complete -- unlike outdated-deps-score, a failed or incomplete audit is never reported as a partial score, since an unverified 'clean' result would be misleading for a security signal."
+  patch-vulnerable-deps-score:
+    description: "0-100 vulnerability sub-score of just the vulnerabilities this pull request introduced (a newly-added or newly-bumped dependency whose exact version is already vulnerable), determined by comparing each changed lockfile's own content before and after the PR. Empty on non-PR events, or when vulnerable-deps-score itself is empty. 100 when this PR introduced no new vulnerability."
+  secrets-found:
+    description: "Number of hardcoded secrets found in the repository's git-tracked text files (a whole-repository count, at the checked-out commit; git history is not scanned). Secrets are reported separately and are never part of health-score. Empty if the scan did not complete (the repository's text exceeded the engine's internal size budget) -- an empty value is not a clean result. The secret values themselves are never printed, logged, or exposed in any output."
+  patch-secrets-found:
+    description: "Number of hardcoded secrets on this pull request's own changed lines (empty on non-PR events, when the pull request's diff could not be resolved, or when the scan did not complete). Each is also annotated on its line in the pull request's Files changed tab (up to 10 errors and 10 warnings, GitHub's per-step limit)."
+  pr-comment-id:
+    description: "ID of the created or updated pull-request comment summarizing this run's health score. Empty when the comment was skipped (not a pull_request event, no github-token, or no PR number in the event payload) or failed to post (e.g. the token lacks pull-requests: write permission -- common for fork-triggered runs)."
+
+runs:
+  using: "node24"
+  main: "dist/index.js"
+
+branding:
+  icon: "activity"
+  color: "green"

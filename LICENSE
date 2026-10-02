@@ -1,0 +1,34 @@
+DebtDraft Action License
+
+Copyright (c) 2026 DebtDraft. All rights reserved.
+
+1. Grant. You may use this software (the "Action") in your own GitHub Actions
+   workflows, for your own repositories, together with a DebtDraft account, at no
+   charge. This license is non-exclusive, non-transferable and revocable.
+
+2. Restrictions. Except as this license expressly allows, you may not copy, modify,
+   merge, publish, distribute, sublicense, sell or create derivative works of the
+   Action, and you may not reverse engineer or decompile it, or remove any notice
+   in it. You may not offer the Action, or a service built from it, to third
+   parties.
+
+3. Third-party software. The Action includes open source components. Each is
+   licensed under its own terms, listed in THIRD-PARTY-NOTICES.txt. Nothing in this
+   license limits your rights under those terms.
+
+4. Service terms. Use of the DebtDraft service is governed by the Terms and
+   Conditions at https://debtdraft.dev/terms and the Privacy Policy at
+   https://debtdraft.dev/privacy.
+
+5. No warranty. THE ACTION IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+   PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+
+6. Limitation of liability. TO THE FULLEST EXTENT PERMITTED BY LAW, DEBTDRAFT IS
+   NOT LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE USE OF OR
+   INABILITY TO USE THE ACTION.
+
+7. Termination. This license ends automatically if you breach it. Then you must
+   stop using the Action and remove it from your workflows.
+
+Questions: support@debtdraft.dev
