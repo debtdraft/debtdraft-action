@@ -11,7 +11,7 @@ Report it privately in one of two ways:
   subject line.
 
 Include what you found, the steps to reproduce it, and the version (tag or commit) you
-tested. You will get a first reply within 3 business days.
+tested. We aim to reply within 3 business days.
 
 ## Supported versions
 
@@ -20,5 +20,6 @@ automatically.
 
 ## What this Action sends
 
-The README section "What is sent to the DebtDraft dashboard" lists exactly what leaves
-your runner. Source code, secrets findings and your GitHub token are never sent.
+The README sections "What is sent to the DebtDraft dashboard" and "Other network
+requests" list what leaves your runner. Source code, secrets findings and your GitHub
+token are never sent to DebtDraft.

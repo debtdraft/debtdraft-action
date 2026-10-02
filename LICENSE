@@ -3,8 +3,10 @@ DebtDraft Action License
 Copyright (c) 2026 DebtDraft. All rights reserved.
 
 1. Grant. You may use this software (the "Action") in your own GitHub Actions
-   workflows, for your own repositories, together with a DebtDraft account, at no
-   charge. This license is non-exclusive, non-transferable and revocable.
+   workflows, for your own repositories, together with a DebtDraft account. The
+   Action itself is provided at no charge. The DebtDraft service has its own plans
+   and prices, set out in the Terms and Conditions (see section 4). This license is
+   non-exclusive, non-transferable and revocable.
 
 2. Restrictions. Except as this license expressly allows, you may not copy, modify,
    merge, publish, distribute, sublicense, sell or create derivative works of the

@@ -14,7 +14,7 @@ This Action requires a [DebtDraft](https://debtdraft.dev) account with this
 repository connected. Before adding the workflow:
 
 1. Sign in at the dashboard and connect this repository.
-2. Create an API key from your team's Settings page.
+2. Create an API key under Settings > API keys.
 3. Add it as a repository secret named `DEBTDRAFT_API_KEY`
    (Settings > Secrets and variables > Actions on this repository).
 
@@ -68,11 +68,11 @@ outputs, no PR comment, and no job summary, when:
 - the key is invalid or has been revoked;
 - this repository is not connected to your DebtDraft team for this key;
 - this repository is locked by your plan's repository limit (a Free-plan team keeps its
-  three oldest-connected repositories active; the rest need a Pro upgrade or a freed slot).
+  oldest-connected repositories active up to the plan's limit; the rest need a Pro
+  upgrade or a freed slot).
 
-Each failure's log message says exactly which of these applies. If DebtDraft's own API is
-unreachable or returns an unexpected error, the check fails **open**: a warning is logged
-and the run continues normally, so a DebtDraft-side outage never blocks your CI.
+Each failure's log message says exactly which of these applies. A temporary problem on
+DebtDraft's side does not block your CI: a warning is logged and the run continues.
 
 ## Permissions
 
@@ -109,12 +109,23 @@ The scan upload itself only happens on `pull_request` events. Each scan uploads:
   - known-vulnerable dependencies (package name, version, advisory id, severity, fixed
     version and the advisory's public one-line summary).
 
-Never sent: source code or code snippets, secrets or any secrets finding (see Secrets
-detection below), environment variables, or the GitHub token.
+Never sent to DebtDraft: source code or code snippets, secrets or any secrets finding
+(see Secrets detection below), environment variables, or the GitHub token.
 
 File paths, function names and package names are sent, so they appear in your DebtDraft
 dashboard, which only members of your team can see. The API key travels as a bearer
 token, so `api-url` must use `https://` (plain `http://` is accepted only for localhost).
+
+## Other network requests
+
+To score your dependencies, the Action sends package names and versions, never your
+code, to two public services operated by Google: [deps.dev](https://deps.dev) (latest
+versions and publish dates) and [OSV.dev](https://osv.dev) (known vulnerabilities and
+malicious-package records). A package from a scope mapped to a private registry in
+`.npmrc` or `.yarnrc.yml` is never looked up.
+
+The Action also calls the GitHub API with your `github-token`, only to post and update
+the pull request comment.
 
 ## Secrets detection
 
