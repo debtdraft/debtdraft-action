@@ -59209,7 +59209,7 @@ async function postComment(options) {
     if (errorStatus(error2) === 403) {
       return {
         status: "failed",
-        reason: "GitHub token lacks permission to comment on this pull request (HTTP 403) -- common for fork-triggered pull_request runs, which get a read-only default GITHUB_TOKEN; the calling workflow needs `permissions: pull-requests: write`"
+        reason: "GitHub token lacks permission to comment on this pull request (HTTP 403), common for fork-triggered pull_request runs, which get a read-only default GITHUB_TOKEN; the calling workflow needs `permissions: pull-requests: write`"
       };
     }
     return { status: "failed", reason: errorMessage(error2) };
@@ -59593,24 +59593,24 @@ async function authorizeRun(options) {
   if (result.status === "not-found") {
     return {
       status: "denied",
-      reason: "this repository is not connected to a DebtDraft team for this API key -- connect it from Manage repos on your dashboard"
+      reason: "this repository is not connected to a DebtDraft team for this API key. Connect it from Manage repos on your dashboard"
     };
   }
   switch (result.httpStatus) {
     case 401:
       return {
         status: "denied",
-        reason: "API key is invalid or revoked -- create a new one from your DebtDraft dashboard settings"
+        reason: "API key is invalid or revoked. Create a new one from your DebtDraft dashboard settings"
       };
     case 403:
       return {
         status: "denied",
-        reason: "this repository is locked by your plan's repository limit -- upgrade to Pro, or free a slot in Manage repos"
+        reason: "this repository is locked by your plan's repository limit. Upgrade to Pro, or free a slot in Manage repos"
       };
     case 400:
       return {
         status: "denied",
-        reason: "DebtDraft rejected the authorize request -- update to the latest version of this Action"
+        reason: "DebtDraft rejected the authorize request. Update to the latest version of this Action"
       };
     default:
       return { status: "indeterminate", reason: result.message };

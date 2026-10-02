@@ -19,7 +19,7 @@ repository connected. Before adding the workflow:
    (Settings > Secrets and variables > Actions on this repository).
 
 Every run checks the key and the repository's connection status before any analysis
-starts, and fails immediately if either is missing or invalid -- see "Authorization" below.
+starts, and fails immediately if either is missing or invalid (see "Authorization" below).
 
 ## Usage
 
@@ -77,11 +77,11 @@ and the run continues normally, so a DebtDraft-side outage never blocks your CI.
 ## Permissions
 
 Posting the PR comment needs `pull-requests: write`. Without it, the comment step fails
-with an HTTP 403 -- logged as a warning, not a run failure, so the rest of the Action
+with an HTTP 403. This is logged as a warning, not a run failure, so the rest of the Action
 (scores, outputs, job summary) still completes and succeeds.
 
 A `pull_request` run triggered from a fork gets a **read-only** default `GITHUB_TOKEN`
-regardless of the `permissions:` block above -- this is a GitHub platform restriction on
+regardless of the `permissions:` block above. This is a GitHub platform restriction on
 fork-triggered workflows, not something this Action or its workflow config can change.
 DebtDraft does not recommend switching to `pull_request_target` as a workaround: that
 trigger runs with the base repository's elevated token permissions while still checking
@@ -92,7 +92,7 @@ itself is affected.
 ## What is sent to the DebtDraft dashboard
 
 The authorization check above sends only your repository's GitHub id, authenticated with
-`api-key` -- see Authorization.
+`api-key` (see Authorization).
 
 The scan upload itself only happens on `pull_request` events. Each scan uploads:
 
