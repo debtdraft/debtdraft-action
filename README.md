@@ -6,6 +6,10 @@ dependencies, combines those five signals into one health score and letter grade
 posts the result as a comment on the pull request (created on the first run, updated in
 place on every later push to the same PR).
 
+It also scans every push to your default branch. Those scans give your repository its
+health score and trend on the DebtDraft dashboard, so the score follows the code you
+merge, while each pull request shows what it would change.
+
 See [`action.yml`](./action.yml) for the full list of inputs and outputs.
 
 ## Prerequisites
@@ -28,14 +32,16 @@ name: DebtDraft
 
 on:
   pull_request:
+  push:
+    branches: [main] # your default branch
 
 permissions:
   contents: read
   pull-requests: write
 
 concurrency:
-  group: debtdraft-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: debtdraft-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   health-check:
@@ -48,6 +54,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           api-key: ${{ secrets.DEBTDRAFT_API_KEY }}
 ```
+
+The `concurrency` block keeps one run per pull request (a new push cancels the older
+run) and lets runs on your default branch finish one after another, so the dashboard
+receives them in order.
 
 ## Requirements
 
@@ -98,9 +108,11 @@ itself is affected.
 The authorization check above sends only your repository's GitHub id, authenticated with
 `api-key` (see Authorization).
 
-The scan upload itself only happens on `pull_request` events. Each scan uploads:
+The scan upload itself only happens on `pull_request` events and on pushes to the
+repository's default branch. A push to any other branch uploads nothing. Each scan uploads:
 
-- the repository's GitHub id, the pull request number and the head commit SHA;
+- the repository's GitHub id and the commit SHA (the pull request's head commit, or the
+  commit pushed to the default branch), plus the pull request number for a pull request;
 - the six scores and the letter grade;
 - a capped findings document that explains the scores. Every list holds at most 30 items
   plus the true total, and covers:

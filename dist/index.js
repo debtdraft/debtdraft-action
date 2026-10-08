@@ -59474,6 +59474,7 @@ var DEFAULT_REQUEST_TIMEOUT_MS2 = 1e4;
 var DEFAULT_MAX_RESPONSE_BYTES2 = 64 * 1024;
 var DEFAULT_MAX_RETRY_AFTER_MS2 = 1e4;
 var LOOPBACK_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]"]);
+var COMMIT_SHA_PATTERN = /^[0-9a-f]{40}$/i;
 function checkApiUrl(apiUrl) {
   let parsed;
   try {
@@ -59486,8 +59487,11 @@ function checkApiUrl(apiUrl) {
   return "api-url must use https:// so the API key is not sent in plaintext";
 }
 async function uploadScan(options) {
-  if (options.eventName !== "pull_request") {
-    return { status: "skipped", reason: "not a pull_request event" };
+  if (options.eventName !== "pull_request" && options.eventName !== "push") {
+    return { status: "skipped", reason: "not a pull_request or default-branch push event" };
+  }
+  if (options.eventName === "push" && !isDefaultBranchPush(options)) {
+    return { status: "skipped", reason: "push to a branch other than the default branch" };
   }
   if (!options.apiKey || !options.apiUrl) {
     return { status: "skipped", reason: "api-key and/or api-url input not set" };
@@ -59496,10 +59500,11 @@ async function uploadScan(options) {
   if (urlProblem !== null) {
     return { status: "failed", reason: urlProblem };
   }
-  if (options.githubRepoId === void 0 || options.headSha === void 0 || options.prNumber === void 0) {
+  const subject = scanSubject(options);
+  if (options.githubRepoId === void 0 || subject === null) {
     return {
       status: "skipped",
-      reason: "pull request event payload is missing repository or head commit information"
+      reason: options.eventName === "push" ? "push event payload is missing repository or commit information" : "pull request event payload is missing repository or head commit information"
     };
   }
   const fetchImpl = options.fetch ?? fetch;
@@ -59515,8 +59520,7 @@ async function uploadScan(options) {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${options.apiKey}` },
       body: JSON.stringify({
         repo: { githubId: options.githubRepoId },
-        prNumber: options.prNumber,
-        commitSha: options.headSha,
+        ...subject,
         scoringVersion: options.scoringVersion,
         scores: { ...options.scores, grade: options.grade },
         ...options.findings ? { findings: options.findings, findingsVersion: FINDINGS_VERSION } : {}
@@ -59534,6 +59538,18 @@ async function uploadScan(options) {
     };
   }
   return { status: "failed", reason: result.message };
+}
+function isDefaultBranchPush(options) {
+  const { defaultBranch, ref, refDeleted } = options;
+  return refDeleted !== true && typeof defaultBranch === "string" && defaultBranch.length > 0 && ref === `refs/heads/${defaultBranch}`;
+}
+function scanSubject(options) {
+  if (options.eventName === "push") {
+    const sha = options.pushSha;
+    return sha !== void 0 && COMMIT_SHA_PATTERN.test(sha) ? { source: "default_branch", commitSha: sha } : null;
+  }
+  if (options.headSha === void 0 || options.prNumber === void 0) return null;
+  return { source: "pull_request", prNumber: options.prNumber, commitSha: options.headSha };
 }
 
 // src/scan-upload/authorize.ts
@@ -66551,6 +66567,10 @@ async function run() {
       githubRepoId: context2.payload.repository?.id,
       headSha: context2.payload.pull_request?.head?.sha,
       prNumber: pullRequestNumber,
+      ref: context2.ref,
+      defaultBranch: context2.payload.repository?.default_branch,
+      refDeleted: context2.payload.deleted,
+      pushSha: context2.sha,
       scoringVersion: SCORING_VERSION,
       scores: {
         health: health.score,
