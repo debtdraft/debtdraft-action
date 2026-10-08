@@ -33,6 +33,10 @@ permissions:
   contents: read
   pull-requests: write
 
+concurrency:
+  group: debtdraft-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   health-check:
     name: DebtDraft
@@ -171,20 +175,6 @@ What it does not do:
 
 Detection uses [secretlint](https://github.com/secretlint/secretlint) (MIT) for named-provider
 patterns, plus a DebtDraft rule for generic high-entropy assignments.
-
-## Known limitation: concurrent runs on the same PR
-
-The Action finds its own previous comment (to edit instead of duplicate) by listing a
-PR's comments before posting. Two runs starting at nearly the same moment for the same
-PR (e.g. rapid-fire pushes) can both fail to see each other's not-yet-created comment
-and each create one, instead of one creating and the other updating. If this matters for
-your workflow, add a `concurrency` group scoped to the PR:
-
-```yaml
-concurrency:
-  group: debtdraft-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-```
 
 ## Support
 

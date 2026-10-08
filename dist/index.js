@@ -59036,6 +59036,7 @@ function blobUrl(serverUrl, owner, repo, sha, path2, line2) {
 
 // src/pr-comment/render.ts
 var COMMENT_MARKER = "<!-- debtdraft:health-score -->";
+var LOGO_HTML = '<a href="https://debtdraft.dev"><img src="https://debtdraft.dev/brand/debtdraft-logo-64.png" width="16" height="16" alt="DebtDraft"></a>';
 var MAX_COMMENT_SECRET_ROWS = 10;
 var SIGNAL_LABELS = {
   vulnerableDeps: "Vulnerable dependencies",
@@ -59119,10 +59120,10 @@ function renderComment(input) {
   const { health, scores, patch, secrets, headSha, runUrl } = input;
   const lines = [COMMENT_MARKER, ""];
   if (health.score === null || health.grade === null) {
-    lines.push("## DebtDraft health score: unavailable", "", "No signal produced a score.");
+    lines.push(`## ${LOGO_HTML} DebtDraft health score: unavailable`, "", "No signal produced a score.");
   } else {
     lines.push(
-      `## DebtDraft health score: ${health.grade} (${health.score.toFixed(2)} / 100)`,
+      `## ${LOGO_HTML} DebtDraft health score: ${health.grade} (${health.score.toFixed(2)} / 100)`,
       "",
       `Based on ${health.signalsUsed.length} of 5 signal(s).`
     );
