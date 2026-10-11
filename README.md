@@ -1,14 +1,15 @@
 # DebtDraft
 
-A GitHub Action that scans a pull request for cyclomatic complexity, test coverage
-gaps, code duplication, outdated dependencies, and known-vulnerable or malicious
-dependencies, combines those five signals into one health score and letter grade, and
-posts the result as a comment on the pull request (created on the first run, updated in
-place on every later push to the same PR).
+[DebtDraft](https://debtdraft.dev) is a GitHub Action that scans pull requests and pushes
+to your default branch for cyclomatic complexity, test coverage gaps, code duplication,
+outdated dependencies, and known-vulnerable or malicious dependencies. It combines those
+five signals into one health score and letter grade, and posts the result as a comment on
+the pull request (created on the first run, updated in place on every later push to the
+same PR).
 
-It also scans every push to your default branch. Those scans give your repository its
-health score and trend on the DebtDraft dashboard, so the score follows the code you
-merge, while each pull request shows what it would change.
+Scans of your default branch give your repository its health score and trend on the
+DebtDraft dashboard, so the score follows the code you merge, while each pull request
+shows what it would change.
 
 See [`action.yml`](./action.yml) for the full list of inputs and outputs.
 
@@ -58,6 +59,40 @@ jobs:
 The `concurrency` block keeps one run per pull request (a new push cancels the older
 run) and lets runs on your default branch finish one after another, so the dashboard
 receives them in order.
+
+## Test coverage
+
+DebtDraft never runs your tests. It reads a coverage report that your own test run already
+produced: LCOV (`coverage/lcov.info`) or Istanbul JSON (`coverage/coverage-final.json`) at
+the workspace root, found automatically. Use the `coverage-files` input for any other path.
+
+The report has to exist when the DebtDraft step runs, so add the step to the job that runs
+your tests, directly after the test step. A separate job starts on a fresh runner and does
+not see the report.
+
+```yaml
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - run: npm test # writes coverage/lcov.info
+      - uses: debtdraft/debtdraft-action@v1
+        if: ${{ !cancelled() }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          api-key: ${{ secrets.DEBTDRAFT_API_KEY }}
+```
+
+Notes:
+
+- Without a report, coverage shows as n/a and is left out of the health score. The other
+  four signals still count.
+- Coverage, complexity and duplication read JavaScript and TypeScript files only, and
+  coverage measures only files your tests load. A changed file that no test loads has no coverage data, so it is not counted in
+  patch coverage. The pull request comment says how many changed files that applies to.
+- Run the DebtDraft step once per commit. Two steps on the same commit write the same scan,
+  and the last one to finish wins.
 
 ## Requirements
 
@@ -131,6 +166,15 @@ Never sent to DebtDraft: source code or code snippets, secrets or any secrets fi
 File paths, function names and package names are sent, so they appear in your DebtDraft
 dashboard, which only members of your team can see. The API key travels as a bearer
 token, so `api-url` must use `https://` (plain `http://` is accepted only for localhost).
+
+## Fair-use limits
+
+Scan uploads are subject to fair-use limits per team, and the DebtDraft API also limits the
+request rate per IP address. When a limit is reached the upload is rejected with HTTP 429
+and the run logs a warning that the scan was not saved to the dashboard. The analysis, the
+pull request comment, the job summary and the outputs are not affected. Limits reset on
+their own; if a legitimate workload keeps hitting them, write to
+[support@debtdraft.dev](mailto:support@debtdraft.dev).
 
 ## Other network requests
 

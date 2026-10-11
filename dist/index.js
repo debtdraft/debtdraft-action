@@ -57918,7 +57918,8 @@ async function requestOnce(options) {
     return {
       kind: "retryable",
       message: `HTTP ${response.status}`,
-      retryAfterMs: parseRetryAfter(response.headers.get("retry-after"))
+      retryAfterMs: parseRetryAfter(response.headers.get("retry-after")),
+      httpStatus: response.status
     };
   }
   if (!response.ok) {
@@ -57945,7 +57946,7 @@ async function requestWithRetry(options) {
   return {
     status: "error",
     message: second.message,
-    httpStatus: second.kind === "fatal" ? second.httpStatus : void 0
+    httpStatus: second.httpStatus
   };
 }
 
@@ -59117,7 +59118,7 @@ function renderSecretsSection(secrets, headSha, runUrl) {
   return lines;
 }
 function renderComment(input) {
-  const { health, scores, patch, secrets, headSha, runUrl } = input;
+  const { health, scores, patch, untestedChangedFiles, secrets, headSha, runUrl } = input;
   const lines = [COMMENT_MARKER, ""];
   if (health.score === null || health.grade === null) {
     lines.push(`## ${LOGO_HTML} DebtDraft health score: unavailable`, "", "No signal produced a score.");
@@ -59147,6 +59148,12 @@ function renderComment(input) {
     for (const signal of patchRows) {
       lines.push(`| ${SIGNAL_LABELS[signal]} | ${patch[signal].toFixed(2)} |`);
     }
+  }
+  if (untestedChangedFiles > 0) {
+    lines.push(
+      "",
+      `${untestedChangedFiles} changed file(s) have no coverage data and are not counted in patch coverage.`
+    );
   }
   lines.push("", ...renderSecretsSection(secrets, headSha, runUrl));
   const shaText = headSha ? headSha.slice(0, 7) : "unknown commit";
@@ -59535,6 +59542,12 @@ async function uploadScan(options) {
     return {
       status: "failed",
       reason: "repository is not connected to a DebtDraft team for this API key (HTTP 404)"
+    };
+  }
+  if (result.httpStatus === 429) {
+    return {
+      status: "failed",
+      reason: "DebtDraft rate limit or scan quota reached (HTTP 429), so this scan was not saved to the dashboard. Your score, outputs and PR comment are not affected"
     };
   }
   return { status: "failed", reason: result.message };
@@ -66533,6 +66546,7 @@ async function run() {
         outdatedDeps: dependencyReport.patch?.score ?? null,
         vulnerableDeps: vulnerableDepsReport.patch?.score ?? null
       },
+      untestedChangedFiles: coverageReport.patch?.untestedChangedFiles.length ?? 0,
       secrets: { report: secretsReport, serverUrl: context2.serverUrl, owner, repo },
       headSha: context2.payload.pull_request?.head?.sha,
       runUrl
