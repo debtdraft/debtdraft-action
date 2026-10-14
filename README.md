@@ -1,17 +1,30 @@
-# DebtDraft
+# DebtDraft: Code Quality Checks for Every Pull Request
 
-[DebtDraft](https://debtdraft.dev) is a GitHub Action that scans pull requests and pushes
-to your default branch for cyclomatic complexity, test coverage gaps, code duplication,
-outdated dependencies, and known-vulnerable or malicious dependencies. It combines those
-five signals into one health score and letter grade, and posts the result as a comment on
-the pull request (created on the first run, updated in place on every later push to the
-same PR).
+[DebtDraft](https://debtdraft.dev) is a GitHub Action for code quality and code review. On every
+pull request, and on every push to your default branch, it checks code complexity, test
+coverage, duplicate code, outdated dependencies, and vulnerable or malicious dependencies. It
+combines those five signals into one health score and letter grade, and posts the result as a
+single pull request comment that updates in place on every push.
 
-Scans of your default branch give your repository its health score and trend on the
-DebtDraft dashboard, so the score follows the code you merge, while each pull request
-shows what it would change.
+Scans of your default branch give your repository its health score and trend on the DebtDraft
+dashboard, so the score follows the code you merge, while each pull request shows what it would
+change. It runs inside your existing GitHub Actions CI workflow.
 
 See [`action.yml`](./action.yml) for the full list of inputs and outputs.
+
+## What it checks
+
+- **Code complexity**: the cyclomatic complexity of each JavaScript and TypeScript function, so
+  hard-to-review code is flagged before it merges.
+- **Test coverage**: line coverage from the coverage report your tests already produce, for the
+  whole repository and for the pull request's changed lines.
+- **Duplicate code**: copied blocks across the codebase, and duplication the pull request adds.
+- **Outdated dependencies**: packages that are a breaking release behind or deprecated.
+- **Vulnerable dependencies**: known-vulnerable or malicious packages anywhere in the installed
+  dependency tree.
+- **Hardcoded secrets**: reported separately and never part of the score.
+
+All checks are static analysis on your own runner. Your source code is never uploaded.
 
 ## Prerequisites
 
@@ -179,10 +192,9 @@ their own; if a legitimate workload keeps hitting them, write to
 ## Other network requests
 
 To score your dependencies, the Action sends package names and versions, never your
-code, to two public services operated by Google: [deps.dev](https://deps.dev) (latest
-versions and publish dates) and [OSV.dev](https://osv.dev) (known vulnerabilities and
-malicious-package records). A package from a scope mapped to a private registry in
-`.npmrc` or `.yarnrc.yml` is never looked up.
+code, to two services: one for package registry data (latest versions and publish
+dates) and one for known-vulnerability and malicious-package records. A package from a
+scope mapped to a private registry in `.npmrc` or `.yarnrc.yml` is never looked up.
 
 The Action also calls the GitHub API with your `github-token`, only to post and update
 the pull request comment.
@@ -225,12 +237,9 @@ What it does not do:
   stays in history and stays compromised; use a dedicated history scanner for that.
 - **It never checks whether a credential is still active.** That would mean sending it to a
   third party.
-- Binary files, files over 1 MB, symlinks, and generated or vendored output (`node_modules`,
+- Binary files, very large files, symlinks, and generated or vendored output (`node_modules`,
   `dist`, `build`, minified files, source maps, snapshots, SVGs) are skipped. Test files and
   fixtures are scanned, because real credentials leak into them.
-
-Detection uses [secretlint](https://github.com/secretlint/secretlint) (MIT) for named-provider
-patterns, plus a DebtDraft rule for generic high-entropy assignments.
 
 ## Support
 
