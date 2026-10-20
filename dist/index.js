@@ -20025,8 +20025,8 @@ var require_constants6 = __commonJS({
       /**
        * Create GLOB_CHARS
        */
-      globChars(win32) {
-        return win32 === true ? WINDOWS_CHARS : POSIX_CHARS;
+      globChars(win322) {
+        return win322 === true ? WINDOWS_CHARS : POSIX_CHARS;
       }
     };
   }
@@ -38498,7 +38498,7 @@ var DEFAULT_EXCLUDES = [
 var MAX_FILE_SIZE_BYTES = 1024 * 1024;
 async function listSourceFiles(root, options) {
   const trackedFiles = await listGitTrackedFiles(root);
-  const isExcluded = (0, import_picomatch.default)([...DEFAULT_EXCLUDES, ...options.exclude ?? []], { dot: true });
+  const isExcluded = (0, import_picomatch.default)([...DEFAULT_EXCLUDES, ...options.exclude ?? []], { dot: true, windows: false });
   const extensionSet = new Set(options.extensions.map((ext) => ext.toLowerCase()));
   const files = [];
   const skipped = [];
@@ -60006,7 +60006,7 @@ var SECRETS_DEFAULT_EXCLUDES = [
 ];
 async function listSecretScanFiles(root, options) {
   const trackedFiles = await listGitTrackedFiles(root);
-  const isExcluded = (0, import_picomatch2.default)([...SECRETS_DEFAULT_EXCLUDES, ...options.exclude ?? []], { dot: true });
+  const isExcluded = (0, import_picomatch2.default)([...SECRETS_DEFAULT_EXCLUDES, ...options.exclude ?? []], { dot: true, windows: false });
   const files = [];
   const skipped = [];
   for (const relativePath of trackedFiles) {
@@ -64442,7 +64442,10 @@ var WINDOWS_DRIVE_RE = /^[A-Za-z]:[\\/]/;
 function resolveSourcePath(sourcePath, options) {
   const normalized = sourcePath.split("\\").join("/");
   if (WINDOWS_DRIVE_RE.test(sourcePath)) {
-    return null;
+    const rel = import_node_path12.win32.relative(options.root, sourcePath);
+    if (import_node_path12.win32.isAbsolute(rel)) return null;
+    const candidate = import_node_path12.posix.normalize(rel.split("\\").join("/"));
+    return isWithinWorkspace(candidate) && options.universe.has(candidate) ? candidate : null;
   }
   if (normalized.startsWith("/")) {
     const rel = (0, import_node_path12.relative)(options.root, normalized).split("\\").join("/");
